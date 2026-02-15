@@ -1,0 +1,197 @@
+// --- KONFIGURASI UTAMA ---
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- USER & AUTHENTICATION ---
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  username  String   @unique
+  email     String   @unique
+  phone     String   @unique
+  password  String
+  role      String   @default("customer")
+
+  // Untuk Verifikasi OTP
+  otpCode   String?
+  otpExpiry DateTime?
+  isVerified Boolean   @default(false)
+
+  // --- RELASI (BACK-RELATION) ---
+  addresses Address[]
+  tokens    LoginToken[]
+  orders    Order[]
+  
+  // FIX: Tambahkan relasi ke Cart (One-to-One)
+  cart      Cart?    
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  label       String   @default("Rumah")
+  recipient   String
+  phone       String
+  fullAddress String
+  city        String
+  district    String
+  postalCode  String
+  isDefault   Boolean  @default(false)
+}
+
+model LoginToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// --- PRODUK & INVENTORY ---
+model Product {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?  @db.Text
+  images       String[]
+  basePrice    Float
+  category     String   @default("Snack")
+
+  stock Int @default(0)
+
+  // Status Produk
+  isActive     Boolean @default(true)
+  isPreorder   Boolean @default(false)
+  poEstimation Int?
+
+  variants Variant[] 
+  
+  // FIX: Tambahkan relasi ke CartItem (Produk bisa ada di banyak cart)
+  cartItems CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Variant {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name String 
+  size String? 
+
+  price Float 
+  stock Int   @default(0)
+
+  orderItems OrderItem[]
+  
+  // FIX: Tambahkan relasi ke CartItem (Varian bisa ada di banyak cart)
+  cartItems  CartItem[]
+}
+
+// --- CART & KERANJANG ---
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id])
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  
+  variantId String?  
+  variant   Variant? @relation(fields: [variantId], references: [id])
+  
+  quantity  Int
+}
+
+// --- ORDER & TRANSAKSI ---
+model Order {
+  id            String    @id @default(cuid())
+  
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  
+  // 1. Detail Snapshot Customer
+  customerName    String?      
+  customerPhone   String?
+  shippingAddress Json?     // Alamat lengkap (snapshot)
+
+  // 2. Integrasi Pengiriman (Input User)
+  courier         String?   // Contoh: "jne", "sicepat"
+  courierService  String?   // <--- WAJIB DITAMBAH: Contoh "reg", "best" (Agar Biteship tau layanannya)
+  shippingCost    Float?
+
+  // 3. Integrasi Biteship (Output Sistem)
+  trackingId      String?   @unique // ID Order Internal Biteship (untuk Webhook matching)
+  resiNumber      String?   // Nomor Resi Asli (AWB) untuk dilihat User (JNE12345)
+  
+  // 4. Integrasi Payment (Midtrans)
+  snapToken       String?   @unique 
+  snapUrl         String?      
+  paymentMethod   String?
+  
+  // 5. Status & Keuangan
+  totalAmount     Float
+  status          String    @default("PENDING_PAYMENT") // Menggabungkan flow Payment & Shipping
+  
+  // Opsi Tambahan: Jika ingin memisah status bayar dan status barang
+  // paymentStatus String   @default("UNPAID") 
+
+  items           OrderItem[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  variantId String
+  variant   Variant @relation(fields: [variantId], references: [id])
+
+  productName String
+  variantName String
+  price       Float 
+  quantity    Int
+  totalPrice  Float 
+}
+
+// --- ENUMS ---
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID 
+  CONFIRMED 
+  SHIPPED 
+  DELIVERED 
+  CANCELLED 
+  REFUNDED 
+}

@@ -1,0 +1,33 @@
+import type { Config } from 'tailwindcss'
+
+const config: Config = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          orange: '#F87B1B',
+          cream: '#FCF9EA',
+          black: '#000000',
+        },
+      },
+      backgroundImage: {
+        'gradient-orange': 'linear-gradient(135deg, #F87B1B 0%, #FF9F4A 100%)',
+        'gradient-orange-light': 'linear-gradient(135deg, #FFA057 0%, #FFB976 100%)',
+      },
+      gridTemplateColumns: {
+        'auto-fit-2': 'repeat(2, minmax(0, 1fr))',
+        'auto-fit-4': 'repeat(auto-fit, minmax(250px, 1fr))',
+        'auto-fit-6': 'repeat(auto-fit, minmax(180px, 1fr))',
+        'auto-fit-8': 'repeat(auto-fit, minmax(150px, 1fr))',
+      },
+    },
+  },
+  plugins: [],
+}
+
+export default config

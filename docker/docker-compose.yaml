@@ -1,0 +1,154 @@
+version: '3.8'
+
+networks:
+  default:
+    name: mandes_internal
+    driver: bridge
+
+services:
+  # --- Service Baru: Cloudflare Tunnel ---
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: mandes_tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    networks:
+      - default
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: mandes_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mandes_ecmr_db
+      POSTGRES_USER: superadmin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Jakarta
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superadmin -d mandes_ecmr_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 24G
+        reservations:
+          memory: 16G
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mandes_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mandes.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      TZ: Asia/Jakarta
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+
+  backend:
+    build: 
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    container_name: mandes_api
+    restart: unless-stopped
+    # Port ini opsional jika pakai tunnel, tapi boleh dibiarkan untuk debug lokal
+    ports:
+      - "4721:4000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DATABASE_URL: "postgresql://superadmin:${POSTGRES_PASSWORD}@postgres:5432/mandes_ecmr_db"
+      PORT: 4000
+      NODE_ENV: production
+      TZ: Asia/Jakarta
+      
+      # UPDATE: Menggunakan Variable dari .env (arah ke domain .shop)
+      API_URL: ${DOMAIN_API}
+      FRONTEND_URL: ${DOMAIN_APP}
+      
+      # WA Gateway
+      WA_GATEWAY_URL: "http://host.docker.internal:6521/send-message"
+      
+      JWT_SECRET: ${JWT_SECRET}
+      
+      # PENTING: CORS harus match dengan domain frontend .shop
+      CORS_ORIGIN: ${DOMAIN_APP}
+      
+      LOG_LEVEL: info
+      # Tambahan: Supaya express percaya request dari Cloudflare Tunnel
+      TRUST_PROXY: "true" 
+      
+    volumes:
+      - ../logs:/app/logs
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        # Build args harus domain .shop agar link di nextjs benar saat di-build
+        - NEXT_PUBLIC_API_URL=${DOMAIN_API}
+        - NODE_ENV=production
+    container_name: mandes_frontend
+    restart: unless-stopped
+    ports:
+      - "8910:3000"
+    environment:
+      # Environment Runtime
+      NEXT_PUBLIC_API_URL: ${DOMAIN_API}
+      NEXT_PUBLIC_APP_URL: ${DOMAIN_APP}
+      NODE_ENV: production
+      TZ: Asia/Jakarta
+      NEXT_TELEMETRY_DISABLED: 1
+    volumes:
+      - nextjs_cache:/app/.next/cache
+    depends_on:
+      - backend
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          memory: 24G
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  nextjs_cache:
+    driver: local

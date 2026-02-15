@@ -1,0 +1,422 @@
+/* ============================================
+   app/globals.css - Fixed Version
+   ============================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   Base Styles
+   ============================================ */
+@layer base {
+  * {
+    @apply border-gray-200; /* Diganti dari border-border untuk keamanan jika config belum setup */
+  }
+  
+  body {
+    @apply bg-[#FCF9EA] text-gray-900 antialiased;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+
+  h1 {
+    @apply text-4xl md:text-6xl text-[#F87B1B];
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl text-[#F87B1B];
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl text-[#F87B1B];
+  }
+
+  a {
+    @apply transition-colors duration-200 no-underline;
+  }
+
+  button {
+    @apply transition-all duration-200;
+  }
+
+  input, textarea, select {
+    @apply transition-all duration-200;
+  }
+}
+
+/* ============================================
+   Custom Utilities
+   ============================================ */
+@layer utilities {
+  /* Gradient Orange */
+  .gradient-orange {
+    background: linear-gradient(135deg, #F87B1B 0%, #FF9F4A 100%);
+  }
+
+  .gradient-orange-light {
+    background: linear-gradient(135deg, #FFA057 0%, #FFB976 100%);
+  }
+
+  /* Gradient Text */
+  .text-gradient-orange {
+    background: linear-gradient(135deg, #F87B1B 0%, #FF9F4A 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Border Gradient */
+  .border-gradient {
+    border-image: linear-gradient(135deg, #F87B1B, #FF9F4A) 1;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-lg;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-[#F87B1B] to-[#FF9F4A] rounded-lg;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply opacity-80;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-orange {
+    background: rgba(248, 123, 27, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(248, 123, 27, 0.2);
+  }
+
+  /* Text Shadow */
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Box Shadow Custom */
+  .shadow-orange {
+    box-shadow: 0 4px 14px 0 rgba(248, 123, 27, 0.25);
+  }
+
+  .shadow-orange-lg {
+    box-shadow: 0 10px 30px 0 rgba(248, 123, 27, 0.3);
+  }
+
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    @apply transition-transform duration-300;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300;
+  }
+
+  .hover-glow:hover {
+    @apply shadow-orange-lg;
+  }
+
+  /* Product Grid Responsive */
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .product-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .product-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .product-grid {
+      grid-template-columns: repeat(6, 1fr);
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .product-grid {
+      grid-template-columns: repeat(8, 1fr);
+    }
+  }
+
+  /* Container Utilities */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Button Variants */
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-[#F87B1B] to-[#FF9F4A] text-white rounded-lg font-semibold hover:shadow-lg transition-all;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 border-2 border-[#F87B1B] text-[#F87B1B] rounded-lg font-semibold hover:bg-[#F87B1B] hover:text-white transition-all;
+  }
+
+  .btn-ghost {
+    @apply px-6 py-3 text-[#F87B1B] hover:bg-[#F87B1B]/10 rounded-lg font-semibold transition-all;
+  }
+
+  /* Input Styles */
+  .input-primary {
+    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#F87B1B] focus:ring-2 focus:ring-[#F87B1B]/20 transition-all;
+  }
+
+  /* Card Styles */
+  .card {
+    @apply bg-white rounded-xl shadow-md p-6 transition-all;
+  }
+
+  /* FIXED: Removed recursive '@apply card' */
+  .card-hover {
+    @apply bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-lg hover:scale-105;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  /* FIXED: Removed recursive '@apply badge' */
+  .badge-orange {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F87B1B]/10 text-[#F87B1B];
+  }
+
+  .badge-green {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700;
+  }
+
+  .badge-red {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700;
+  }
+}
+
+/* ============================================
+   Keyframe Animations
+   ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   Component Specific Styles
+   ============================================ */
+
+/* Header Sticky */
+header.sticky {
+  @apply sticky top-0 z-50 shadow-md;
+}
+
+/* Navbar Dropdown */
+.navbar-dropdown {
+  @apply absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all;
+}
+
+/* Modal Backdrop */
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
+}
+
+/* Chatbot Animation */
+.chatbot-pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Loading Spinner */
+.spinner {
+  @apply inline-block w-8 h-8 border-4 border-[#F87B1B]/20 border-t-[#F87B1B] rounded-full;
+  animation: spin 1s linear infinite;
+}
+
+/* Toast Notification - FIXED Recursive Apply */
+.toast {
+  @apply fixed bottom-6 right-6 bg-white rounded-lg p-4 max-w-sm z-50;
+  box-shadow: 0 10px 30px 0 rgba(248, 123, 27, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.toast-success {
+  @apply fixed bottom-6 right-6 bg-white rounded-lg p-4 max-w-sm z-50 border-l-4 border-green-500;
+  box-shadow: 0 10px 30px 0 rgba(248, 123, 27, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.toast-error {
+  @apply fixed bottom-6 right-6 bg-white rounded-lg p-4 max-w-sm z-50 border-l-4 border-red-500;
+  box-shadow: 0 10px 30px 0 rgba(248, 123, 27, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.toast-warning {
+  @apply fixed bottom-6 right-6 bg-white rounded-lg p-4 max-w-sm z-50 border-l-4 border-yellow-500;
+  box-shadow: 0 10px 30px 0 rgba(248, 123, 27, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.toast-info {
+  @apply fixed bottom-6 right-6 bg-white rounded-lg p-4 max-w-sm z-50 border-l-4 border-blue-500;
+  box-shadow: 0 10px 30px 0 rgba(248, 123, 27, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+/* ============================================
+   Responsive Utilities
+   ============================================ */
+
+@media (max-width: 640px) {
+  .product-grid { grid-template-columns: repeat(2, 1fr); }
+  h1 { @apply text-3xl; }
+  h2 { @apply text-2xl; }
+  .container-custom { @apply px-4; }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .product-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 1280px) {
+  .product-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+@media (min-width: 1536px) {
+  .product-grid { grid-template-columns: repeat(8, 1fr); }
+}
+
+/* ============================================
+   Custom Emoji/Icon Styles
+   ============================================ */
+.emoji {
+  @apply inline-block;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+/* FIXED: Removed recursive @apply emoji */
+.emoji-large {
+  @apply inline-block text-6xl;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+.emoji-bounce {
+  animation: bounce 2s infinite;
+}
+
+/* ============================================
+   Form Validation Styles
+   ============================================ */
+input:invalid:not(:placeholder-shown) {
+  @apply border-red-500;
+}
+
+input:valid:not(:placeholder-shown) {
+  @apply border-green-500;
+}
+
+.form-error {
+  @apply text-red-500 text-sm mt-1;
+}
+
+.form-success {
+  @apply text-green-500 text-sm mt-1;
+}

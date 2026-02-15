@@ -1,0 +1,47 @@
+[
+    {
+        "id": "p001",
+        "name": "Keripik Singkong Pedas Mercon",
+        "price": 15000,
+        "stock": 50,
+        "category": "Keripik",
+        "description": "Keripik singkong super tipis dengan bumbu pedas nampol level 5. Dijamin bikin nagih!",
+        "flavor_profile": "Pedas, Gurih, Renyah"
+    },
+    {
+        "id": "p002",
+        "name": "Basreng Stik Original",
+        "price": 12000,
+        "stock": 30,
+        "category": "Basreng",
+        "description": "Bakso goreng bentuk stik dengan rasa ikan tenggiri asli. Tanpa MSG berlebih.",
+        "flavor_profile": "Asin, Gurih, Ikan"
+    },
+    {
+        "id": "p003",
+        "name": "Macaroni Spiral Keju",
+        "price": 18000,
+        "stock": 0,
+        "category": "Makaroni",
+        "description": "Makaroni bentuk spiral dengan lumuran bumbu keju premium. Creamy dan ngeju banget.",
+        "flavor_profile": "Manis, Asin, Keju"
+    },
+    {
+        "id": "p004",
+        "name": "Usus Goreng Krispi",
+        "price": 13000,
+        "stock": 100,
+        "category": "Usus",
+        "description": "Usus ayam pilihan yang digoreng kering dengan tepung bumbu rahasia. Tidak amis.",
+        "flavor_profile": "Gurih, Garing"
+    },
+    {
+        "id": "p005",
+        "name": "Cimol Kering (Cimoring)",
+        "price": 10000,
+        "stock": 25,
+        "category": "Cimol",
+        "description": "Cimol mini digoreng kering, ditaburi bumbu balado manis pedas.",
+        "flavor_profile": "Pedas, Manis, Renyah"
+    }
+]

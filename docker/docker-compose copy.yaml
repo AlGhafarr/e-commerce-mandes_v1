@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mandes_db
+    restart: always
+    environment:
+      POSTGRES_DB: mandes_ecmr_db
+      POSTGRES_USER: superadmin
+      POSTGRES_PASSWORD: "supersecret123"
+    ports:
+      - "55622:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: mandes_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mandes.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+      
+  backend:
+    build: ../backend
+    container_name: mandes_api
+    restart: always
+    ports:
+      - "4721:4000"
+    environment:
+      DATABASE_URL: "postgresql://superadmin:supersecret123@postgres:5432/mandes_ecmr_db"
+      PORT: 4000
+      NODE_ENV: development
+    volumes:
+      - ../backend:/app
+      - /app/node_modules
+      - ../logs:/app/logs  
+    depends_on:
+      - postgres
+      
+  app:
+    build: ../frontend
+    container_name: mandes_frontend
+    restart: always
+    ports:
+      - "8910:3000"
+    environment:
+      DATABASE_URL: "postgresql://superadmin:supersecret123@postgres:5432/mandes_ecmr_db"
+    depends_on:
+      - postgres
+      - backend
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules 
+
+volumes:
+  postgres_data:
+#  backend_node_modules:
+#  frontend_node_modules:

@@ -1,0 +1,29 @@
+{
+    "shop_name": "SnackAttack Indonesia",
+    "operational_hours": "Senin - Jumat: 09:00 - 17:00 WIB, Sabtu: 10:00 - 15:00 WIB, Minggu: Libur",
+    "shipping_policy": {
+        "couriers": [
+            "JNE",
+            "J&T",
+            "SiCepat",
+            "GoSend/GrabExpress (Instant/Sameday untuk area Jakarta)"
+        ],
+        "processing_time": "Pesanan sebelum jam 14:00 dikirim hari yang sama.",
+        "free_shipping": "Gratis ongkir untuk pembelian di atas Rp 100.000 (maksimal subsidi Rp 10.000)."
+    },
+    "ordering_guide": "1. Pilih produk > Masukkan keranjang. 2. Checkout dan isi alamat. 3. Bayar via Transfer Bank (BCA/Mandiri) atau QRIS. 4. Konfirmasi pembayaran otomatis.",
+    "faq": [
+        {
+            "q": "Apakah produk halal?",
+            "a": "Semua bahan yang kami gunakan sudah bersertifikat halal MUI."
+        },
+        {
+            "q": "Berapa lama tahan?",
+            "a": "Produk tahan 3-6 bulan dalam kemasan tertutup rapat. Simpan di tempat sejuk."
+        },
+        {
+            "q": "Bisa reseller?",
+            "a": "Bisa banget! Untuk info reseller/dropship silakan chat admin WhatsApp di 0812-3456-7890."
+        }
+    ]
+}
