@@ -48,40 +48,45 @@ export default function AdminCustomers() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Gunakan Env Variable agar dinamis, atau fallback ke localhost
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
-        
-        const res = await fetch(`${API_BASE}/admin/customers`, {
+        // ✅ GUNAKAN JALUR PROXY (AGAR COOKIE TERBAWA)
+        const res = await fetch('/api/proxy/admin/customers', { 
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include' // PENTING: Kirim cookie token admin
         });
 
-        if (!res.ok) throw new Error("Gagal mengambil data dari server");
+        if (!res.ok) {
+            throw new Error(`Gagal mengambil data (${res.status})`);
+        }
 
-        const data = await res.json();
+        const rawData = await res.json();
         
-        // Mapping data dari Backend ke Interface UI (Format Tanggal dll)
-        const mappedData = data.map((c: any) => ({
+        // ✅ MAPPING DATA DARI BACKEND KE FORMAT UI
+        // Kita lakukan mapping di sini agar UI tidak error jika backend mengirim field yang berbeda
+        const mappedData: Customer[] = rawData.map((c: any) => ({
             id: c.id,
-            name: c.name,
-            phone: c.phone,
-            last_login: new Date(c.joinedAt || c.created_at).toLocaleDateString('id-ID'), // Fallback date
-            created_at: new Date(c.created_at || c.joinedAt).toLocaleDateString('id-ID'),
-            orders: c.orders.map((o: any) => ({
-                order_id: o.order_id,
-                date: new Date(o.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}),
-                total: o.total,
-                payment_method: o.payment_method,
-                status: o.status,
-                items: o.items
-            }))
+            name: c.name || 'Tanpa Nama',
+            phone: c.phone || '-',
+            // Handling variasi nama field tanggal dari backend
+            last_login: c.last_login ? new Date(c.last_login).toLocaleDateString('id-ID') : '-',
+            created_at: new Date(c.created_at || c.joinedAt || Date.now()).toLocaleDateString('id-ID'),
+            // Handling orders array
+            orders: Array.isArray(c.orders) ? c.orders.map((o: any) => ({
+                order_id: o.order_id || o.id,
+                date: o.created_at ? new Date(o.created_at).toLocaleDateString('id-ID', { 
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'
+                }) : '-',
+                total: Number(o.total_amount || o.total || 0),
+                payment_method: o.payment_method || '-',
+                status: o.status || 'PENDING',
+                items: Array.isArray(o.items) ? o.items : []
+            })) : []
         }));
 
-        setCustomers(mappedData);
-      } catch (error) {
-        console.error(error);
-        showToast("Gagal terhubung ke server database", "error");
+        setCustomers(mappedData); 
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        showToast("Gagal memuat data pelanggan", "error");
       } finally {
         setIsLoading(false);
       }
@@ -102,7 +107,7 @@ export default function AdminCustomers() {
   return (
     <div className="relative w-full max-w-[100vw]">
       
-      {/* TOAST */}
+      {/* TOAST NOTIFICATION */}
       <div className={`fixed top-6 right-6 z-[100] transition-all duration-300 transform ${toast.show ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
         <div className={`flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border-l-4 bg-white ${
             toast.type === 'success' ? 'border-green-500' : 
@@ -213,7 +218,7 @@ export default function AdminCustomers() {
         </div>
       </div>
 
-      {/* MODAL DETAIL (Tidak ada perubahan UI) */}
+      {/* MODAL DETAIL */}
       {selectedCustomer && (
         <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[90vh]">

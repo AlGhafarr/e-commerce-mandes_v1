@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Globe, AlertCircle, Truck, Package, CheckCircle, Clock, Search, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
-import { orderService } from '@/services/orderService'; 
+import { Globe, AlertCircle, Truck, Package, CheckCircle, Clock, Search, X, Check, AlertTriangle, Loader2, RefreshCcw } from 'lucide-react';
 
-// Tipe Data
+// --- TIPE DATA (Sesuaikan dengan UI) ---
 interface OrderItem {
   name: string;
   qty: number;
@@ -18,7 +17,7 @@ interface Order {
   total: number;
   date: string;
   paymentMethod: string;
-  status: 'PENDING_PAYMENT' | 'PAID' | 'CONFIRMED' | 'PACKED' | 'SHIPPED' | 'DELIVERED'; 
+  status: 'PENDING_PAYMENT' | 'PAID' | 'CONFIRMED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'; 
   trackingId?: string; 
   courier?: string;    
   items: OrderItem[];
@@ -42,15 +41,50 @@ export default function AdminOrders() {
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  // 1. FETCH DATA REAL DARI API
+  // --- 1. FETCH DATA DARI API (MENGGUNAKAN PROXY) ---
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-        const data = await orderService.getAllAdmin();
-        
-        // Mapping status backend ke frontend jika perlu (misal status DB: 'PENDING_PAYMENT')
-        // Disini kita pakai raw data dulu, pastikan status di DB konsisten
-        setOrders(data);
+        // ✅ Gunakan Endpoint Proxy agar Cookie terbawa
+        const res = await fetch('/api/proxy/admin/orders', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include' // WAJIB: Agar admin terautentikasi
+        });
+
+        if (!res.ok) throw new Error(`Gagal fetch orders (${res.status})`);
+
+        const rawData = await res.json();
+
+        // ✅ MAPPING DATA (Backend -> Frontend)
+        // Ini memastikan data tampil benar meskipun format DB berbeda (misal snake_case)
+        const mappedOrders: Order[] = rawData.map((o: any) => ({
+            id: o.order_id || o.id, // Support kedua format ID
+            customer: o.user?.name || o.customer_name || 'Guest',
+            total: Number(o.total_amount || o.total || 0),
+            date: new Date(o.created_at || o.date).toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'
+            }),
+            paymentMethod: o.payment_method || 'MANUAL',
+            status: o.status || 'PENDING_PAYMENT',
+            
+            // Logika Resi/Biteship: Ambil dari field tracking_id atau waybill_id
+            trackingId: o.tracking_id || o.waybill_id || o.resi || null,
+            
+            // Logika Kurir: Gabungkan kurir dan layanan (misal: JNE - REG)
+            courier: o.courier_name ? `${o.courier_name} ${o.courier_service || ''}` : 'Kurir Toko',
+            
+            address: o.shipping_address || o.address || 'Alamat tidak tersedia',
+            
+            items: Array.isArray(o.items) ? o.items.map((item: any) => ({
+                name: item.product_name || item.name || 'Produk',
+                qty: Number(item.quantity || item.qty || 1),
+                price: Number(item.price || 0),
+                image: item.image || item.product_image || '/placeholder-snack.jpg'
+            })) : []
+        }));
+
+        setOrders(mappedOrders);
     } catch (error) {
         console.error(error);
         showToast("Gagal mengambil data pesanan", 'error');
@@ -61,23 +95,36 @@ export default function AdminOrders() {
 
   useEffect(() => {
     fetchOrders();
+    
+    // Opsional: Polling setiap 30 detik untuk cek update otomatis (misal dari webhook Biteship)
+    const interval = setInterval(fetchOrders, 30000); 
+    return () => clearInterval(interval);
   }, []);
 
-  // 2. HANDLE UPDATE STATUS (BITESHIP TRIGGER)
+  // --- 2. HANDLE UPDATE STATUS (Trigger Biteship via Backend) ---
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setIsUpdating(true);
     try {
-        // Panggil API Backend
-        const response = await orderService.updateStatus(orderId, newStatus);
-        
-        // Update State Lokal tanpa reload
+        // ✅ Kirim Request Update ke Backend via Proxy
+        const res = await fetch(`/api/proxy/admin/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+            credentials: 'include'
+        });
+
+        if (!res.ok) throw new Error("Gagal update status di server");
+
+        const result = await res.json();
+
+        // ✅ Update State Lokal (Optimistic UI update)
         const updatedOrders = orders.map(order => {
             if (order.id === orderId) {
                 return { 
                     ...order, 
                     status: newStatus as any,
-                    // Jika ada trackingId baru dari backend (hasil generate Biteship), update juga
-                    trackingId: response.trackingId || order.trackingId 
+                    // Jika backend mengembalikan trackingId baru (misal hasil order Biteship), update di sini
+                    trackingId: result.tracking_id || result.resi || order.trackingId 
                 };
             }
             return order;
@@ -85,15 +132,21 @@ export default function AdminOrders() {
 
         setOrders(updatedOrders);
         
-        // Update Modal yang sedang terbuka
+        // Update Modal jika sedang terbuka
         if (selectedOrder && selectedOrder.id === orderId) {
             const freshOrder = updatedOrders.find(o => o.id === orderId);
             if (freshOrder) setSelectedOrder(freshOrder);
         }
 
-        showToast(`Status diperbarui: ${newStatus}`, 'success');
+        showToast(`Status berhasil diubah: ${newStatus}`, 'success');
+
+        // Jika status SHIPPED, fetch ulang untuk memastikan data resi terbaru dari Biteship masuk
+        if (newStatus === 'SHIPPED') {
+            setTimeout(fetchOrders, 1000); 
+        }
 
     } catch (error) {
+        console.error(error);
         showToast("Gagal update status", 'error');
     } finally {
         setIsUpdating(false);
@@ -103,11 +156,12 @@ export default function AdminOrders() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING_PAYMENT': return <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><Clock size={12}/> Belum Bayar</span>;
-      case 'PAID': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><CheckCircle size={12}/> Dibayar</span>;
+      case 'PAID': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><CheckCircle size={12}/> Dibayar (Perlu Konfirmasi)</span>;
       case 'CONFIRMED': return <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><CheckCircle size={12}/> Dikonfirmasi</span>;
       case 'PACKED': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><Package size={12}/> Dikemas</span>;
       case 'SHIPPED': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><Truck size={12}/> Dikirim</span>;
       case 'DELIVERED': return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><CheckCircle size={12}/> Selesai</span>;
+      case 'CANCELLED': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1"><X size={12}/> Dibatalkan</span>;
       default: return <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-bold">{status}</span>;
     }
   };
@@ -135,11 +189,22 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">Monitoring Pesanan</h1>
-      <p className="text-sm text-gray-500 mb-8">Pantau transaksi Real-time & Manajemen Pengiriman.</p>
+      <div className="flex justify-between items-end mb-2">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Monitoring Pesanan</h1>
+            <p className="text-sm text-gray-500">Pantau transaksi Real-time & Manajemen Pengiriman.</p>
+          </div>
+          <button 
+            onClick={fetchOrders} 
+            className="flex items-center gap-2 text-sm font-bold text-[#F87B1B] hover:bg-orange-50 px-3 py-2 rounded-lg transition"
+            title="Refresh Data (Cek status terbaru)"
+          >
+            <RefreshCcw size={16} className={isLoading ? "animate-spin" : ""} /> Refresh
+          </button>
+      </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap pb-1">
+      <div className="flex gap-4 border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap pb-1 mt-6">
         <button 
           onClick={() => setActiveTab('web')}
           className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'web' ? 'border-[#F87B1B] text-[#F87B1B]' : 'border-transparent text-gray-500'}`}
@@ -164,7 +229,6 @@ export default function AdminOrders() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input type="text" placeholder="Cari ID Pesanan / Pelanggan..." className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F87B1B]" />
              </div>
-             <button onClick={fetchOrders} className="bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-100">Refresh</button>
           </div>
           
           <div className="overflow-x-auto">
@@ -181,29 +245,34 @@ export default function AdminOrders() {
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
                 {isLoading ? (
-                    <tr><td colSpan={6} className="p-8 text-center text-gray-500">Memuat data pesanan...</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-gray-500">
+                        <div className="flex justify-center items-center gap-2"><Loader2 className="animate-spin" size={18}/> Memuat data...</div>
+                    </td></tr>
                 ) : orders.length === 0 ? (
                     <tr><td colSpan={6} className="p-8 text-center text-gray-400">Belum ada pesanan masuk.</td></tr>
                 ) : (
                     orders.map((order) => (
                     <tr key={order.id} className="hover:bg-gray-50 transition">
-                        <td className="p-4 font-bold">{order.id}</td>
+                        <td className="p-4 font-bold text-gray-700">#{order.id.slice(0,8)}...</td>
                         <td className="p-4">
                         <p className="font-bold text-gray-700">{order.customer}</p>
                         <p className="text-[10px] text-gray-400">{order.date}</p>
                         </td>
-                        <td className="p-4 font-bold text-[#F87B1B]">Rp {order.total.toLocaleString()}</td>
+                        <td className="p-4">
+                            <div className="font-bold text-[#F87B1B]">Rp {order.total.toLocaleString()}</div>
+                            <div className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded w-fit mt-1">{order.paymentMethod}</div>
+                        </td>
                         <td className="p-4">
                         {getStatusBadge(order.status)}
-                        {order.trackingId && <p className="text-[10px] text-gray-500 mt-1 font-mono flex items-center gap-1"><Truck size={10}/> {order.trackingId}</p>}
+                        {order.trackingId && <p className="text-[10px] text-green-600 mt-1 font-mono flex items-center gap-1 bg-green-50 px-2 py-1 rounded w-fit"><Truck size={10}/> {order.trackingId}</p>}
                         </td>
-                        <td className="p-4 text-gray-600">{order.courier}</td>
+                        <td className="p-4 text-gray-600 text-xs">{order.courier}</td>
                         <td className="p-4 text-right">
                         <button 
                             onClick={() => setSelectedOrder(order)}
-                            className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 transition"
+                            className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 transition border border-gray-200"
                         >
-                            Proses
+                            Kelola
                         </button>
                         </td>
                     </tr>
@@ -260,8 +329,12 @@ export default function AdminOrders() {
                 {/* Header */}
                 <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800">Pesanan #{selectedOrder.id}</h2>
-                        <p className="text-xs text-gray-500">{selectedOrder.date}</p>
+                        <h2 className="text-lg font-bold text-gray-800">Pesanan #{selectedOrder.id.substring(0,8)}...</h2>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                            <span>{selectedOrder.date}</span>
+                            <span>•</span>
+                            <span className="bg-gray-200 px-1.5 rounded text-gray-700">{selectedOrder.paymentMethod}</span>
+                        </div>
                     </div>
                     <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-200 rounded-full flex-shrink-0"><X size={20}/></button>
                 </div>
@@ -297,6 +370,9 @@ export default function AdminOrders() {
                             <p className="text-xs font-bold text-gray-500 uppercase mb-1">Penerima</p>
                             <p className="text-sm font-bold text-gray-800">{selectedOrder.customer}</p>
                             <p className="text-xs text-gray-600 mt-1 flex items-center gap-1"><Truck size={10}/> {selectedOrder.courier}</p>
+                            {selectedOrder.trackingId && (
+                                <p className="text-xs text-green-600 font-bold mt-1 bg-green-100 px-2 py-1 rounded w-fit">Resi: {selectedOrder.trackingId}</p>
+                            )}
                         </div>
                         <div>
                             <p className="text-xs font-bold text-gray-500 uppercase mb-1">Alamat</p>
@@ -330,6 +406,7 @@ export default function AdminOrders() {
                 <div className="p-4 md:p-6 border-t border-gray-100 bg-white flex flex-col sm:flex-row justify-end gap-3">
                     <button onClick={() => setSelectedOrder(null)} className="px-4 py-2 text-gray-500 hover:text-gray-700 text-sm font-bold w-full sm:w-auto">Tutup</button>
                     
+                    {/* LOGIC TOMBOL AKSI BERDASARKAN STATUS */}
                     {selectedOrder.status === 'PAID' && (
                         <button onClick={() => handleUpdateStatus(selectedOrder.id, 'CONFIRMED')} disabled={isUpdating} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 w-full sm:w-auto flex items-center justify-center gap-2">
                             {isUpdating ? <Loader2 className="animate-spin" size={16}/> : 'Konfirmasi Pesanan'}
@@ -347,7 +424,7 @@ export default function AdminOrders() {
                     )}
                     {selectedOrder.status === 'SHIPPED' && (
                         <div className="flex items-center gap-2 text-green-600 text-sm font-bold bg-green-50 px-4 py-2 rounded-lg">
-                            <Truck size={16}/> Sedang Dikirim {selectedOrder.trackingId && `(Resi: ${selectedOrder.trackingId})`}
+                            <Truck size={16}/> Dalam Pengiriman
                         </div>
                     )}
                 </div>

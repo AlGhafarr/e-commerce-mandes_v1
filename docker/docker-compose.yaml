@@ -27,6 +27,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: Asia/Jakarta
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "55622:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backups:/backups
@@ -89,6 +91,8 @@ services:
       
       # WA Gateway
       WA_GATEWAY_URL: "http://host.docker.internal:6521/send-message"
+
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
       
       JWT_SECRET: ${JWT_SECRET}
       
@@ -97,7 +101,7 @@ services:
       
       LOG_LEVEL: info
       # Tambahan: Supaya express percaya request dari Cloudflare Tunnel
-      TRUST_PROXY: "true" 
+      TRUST_PROXY: "1" 
       
     volumes:
       - ../logs:/app/logs

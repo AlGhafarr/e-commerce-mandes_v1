@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-// import Link from 'next/link'; // <-- HAPUS INI
-import ProtectedLink from '@/components/ProtectedLink'; // <-- TAMBAHKAN INI
+import ProtectedLink from '@/components/ProtectedLink';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Chatbot from '@/components/Chatbot'; 

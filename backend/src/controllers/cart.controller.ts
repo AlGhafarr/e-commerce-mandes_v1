@@ -67,9 +67,19 @@ export const getCart = async (req: Request, res: Response) => {
 export const addToCart = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
+        console.log("🚀 [CART_POST] Data Diterima:", {
+            userId,
+            body: req.body,
+            cookies: req.cookies // Pastikan cookie 'token' ada di sini
+        });
+
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
         const { productId, quantity, variantId } = req.body;
+
+        if (!productId || !quantity) {
+            return res.status(400).json({ error: "Data produk atau quantity tidak lengkap" });
+        }
 
         // 1. Pastikan User punya Cart
         let userCart = await prisma.cart.findUnique({

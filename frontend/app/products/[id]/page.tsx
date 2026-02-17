@@ -5,9 +5,10 @@ import { Star, Minus, Plus, ShoppingCart, Heart, Search, MessageCircle, ArrowLef
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation'; 
 import { productService } from '../../../services/productService';
+import { cartService } from '../../../services/cartService'; 
 import { useAuth } from '@/app/context/AuthContext';
 import Chatbot from '@/components/Chatbot';
-import { authEvents } from '@/utils/event'; // IMPORT EVENT GLOBALS
+import { authEvents } from '@/utils/event';
 
 export default function ProductDetail() {
   const params = useParams();
@@ -125,10 +126,10 @@ export default function ProductDetail() {
         return;
     }
 
-    // 2. Cek Login (Pakai Modal Global)
+    // 2. Cek Login
     if (!isAuthenticated) {
-        setIsMobileModalOpen(false); // Tutup modal mobile jika ada
-        authEvents.triggerLoginModal(); // Trigger Modal Login Global
+        setIsMobileModalOpen(false);
+        authEvents.triggerLoginModal(); 
         return;
     }
     
@@ -136,7 +137,6 @@ export default function ProductDetail() {
 
     // --- CASE 1: BELI LANGSUNG (DIRECT) ---
     if (type === 'buy') {
-        // Tidak perlu hit API Cart. Langsung redirect ke Checkout dengan Query Params.
         const variantString = `${selectedVariantName} - ${selectedSizeName}`;
         const url = `/checkout?mode=direct&productId=${product.id}&qty=${quantity}&variant=${encodeURIComponent(variantString)}`;
         router.push(url);
@@ -146,37 +146,28 @@ export default function ProductDetail() {
     // --- CASE 2: MASUK KERANJANG (CART) ---
     setIsSubmitting(true);
     try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
-        
-        const res = await fetch(`${API_URL}/cart`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                productId: product.id, 
-                quantity: quantity,
-                variantId: activeVariantData.id 
-            }),
-            credentials: 'include' 
-        });
-
-        if (!res.ok) {
-            // Jika token expired saat hit API
-            if (res.status === 401) {
-                authEvents.triggerLoginModal();
-                return;
-            }
-            const errData = await res.json();
-            throw new Error(errData.error || "Gagal menambahkan ke keranjang");
-        }
+        // ✅ GANTI FETCH MANUAL DENGAN CART SERVICE
+        // Service ini otomatis menggunakan jalur /api/proxy/cart
+        await cartService.addToCart(
+            product.id, 
+            selectedVariantName, 
+            selectedSizeName, 
+            quantity
+        );
 
         // Sukses masuk keranjang
         triggerToast(`Berhasil masuk keranjang!\n${product.name}`);
-        // Opsional: Reset quantity
-        // setQuantity(1);
 
     } catch (error: any) {
         console.error(error);
-        triggerToast(error.message || "Gagal memproses permintaan.");
+        
+        // 3. HANDLE AUTO-LOGIN MODAL
+        // Jika service melempar error "UNAUTHORIZED", trigger login modal
+        if (error.message === "UNAUTHORIZED") {
+            authEvents.triggerLoginModal();
+        } else {
+            triggerToast(error.message || "Gagal memproses permintaan.");
+        }
     } finally {
         setIsSubmitting(false);
     }

@@ -1,27 +1,38 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
+// ✅ GUNAKAN JALUR PROXY INTERNAL
+// Ini memastikan request dikirim ke domain mandessnack.shop sehingga cookie terbawa
+const API_URL = '/api/proxy/admin'; 
 
 export const adminService = {
     // Ambil Data Pelanggan
     async getCustomers() {
-        const res = await fetch(`${API_URL}/admin/customers`, {
+        // Menembak ke /api/proxy/admin/customers
+        const res = await fetch(`${API_URL}/customers`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include' // Kirim Token Cookie
+            // credentials: 'include' WAJIB agar token admin dikirim oleh browser
+            credentials: 'include' 
         });
 
-        if (!res.ok) throw new Error('Gagal mengambil data pelanggan');
+        if (!res.ok) {
+            if (res.status === 401) throw new Error("Akses Ditolak: Sesi Admin Habis");
+            throw new Error('Gagal mengambil data pelanggan');
+        }
         return await res.json();
     },
 
     // Ambil Data Pesanan
     async getOrders() {
-        const res = await fetch(`${API_URL}/admin/orders`, {
+        // Menembak ke /api/proxy/admin/orders
+        const res = await fetch(`${API_URL}/orders`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
         });
 
-        if (!res.ok) throw new Error('Gagal mengambil data pesanan');
+        if (!res.ok) {
+            if (res.status === 401) throw new Error("Akses Ditolak: Sesi Admin Habis");
+            throw new Error('Gagal mengambil data pesanan');
+        }
         return await res.json();
     }
 };

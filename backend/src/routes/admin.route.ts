@@ -2,9 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { adminLogin, adminLogout, adminMe, getCustomers, getAdminOrders, updateAdminOrderStatus } from '../controllers/admin.controller';
 
-
 const router = Router();
 const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET || 'rahasia_admin_ganteng';
+
 /**
  * @swagger
  * tags:
@@ -95,30 +95,38 @@ router.post('/logout', adminLogout);
 router.get('/me', adminMe);
 
 // ─────────────────────────────────────────────────────────────
-// PROTECTED ROUTES — wajib auth (struktur lama tetap sama)
+// PROTECTED ROUTES — wajib auth
 // ─────────────────────────────────────────────────────────────
 
-// Middleware Auth wajib untuk semua route di bawah ini
 const verifyAdminToken = (req: Request, res: Response, next: NextFunction) => {
-    // Ambil token dari cookie admin, BUKAN cookie user
-    const token = req.cookies.mandes_admin_token;
+    // --- DEBUG LOG ---
+    console.log("🔍 [DEBUG AUTH] Request masuk ke:", req.path);
+    console.log("🔍 [DEBUG AUTH] Cookies yang diterima:", req.cookies);
+    console.log("🔍 [DEBUG AUTH] Admin Token:", req.cookies?.mandes_admin_token ? "ADA" : "KOSONG");
+    // -----------------
+
+    const token = req.cookies?.mandes_admin_token;
 
     if (!token) {
-        // Cek header juga untuk backup (kalau testing di Postman tanpa cookie)
         const authHeader = req.headers['authorization'];
-        if (!authHeader) return res.status(401).json({ error: "Akses Ditolak: Tidak ada token admin" });
+        console.log("🔍 [DEBUG AUTH] Cek Authorization Header:", authHeader);
+
+        if (!authHeader) {
+            console.log("❌ [DEBUG AUTH] Ditolak: Token Kosong");
+            return res.status(401).json({ error: "Akses Ditolak: Tidak ada token admin" });
+        }
     }
 
     try {
-        // Verifikasi Token pakai Secret Admin
         const decoded = jwt.verify(token, ADMIN_SECRET);
-        (req as any).admin = decoded; // Tempel data admin ke request
-        next(); // Lanjut masuk
+        (req as any).admin = decoded;
+        console.log("✅ [DEBUG AUTH] Token Valid! Role:", (decoded as any).role);
+        next();
     } catch (error) {
+        console.log("❌ [DEBUG AUTH] Gagal Verify JWT:", error);
         return res.status(401).json({ error: "Token Admin Tidak Valid / Kadaluarsa" });
     }
 };
-
 
 router.use(verifyAdminToken);
 

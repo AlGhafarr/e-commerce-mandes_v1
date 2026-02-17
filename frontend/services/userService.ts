@@ -1,5 +1,6 @@
-// Sesuaikan dengan IP Server Backend Anda
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
+// ✅ GUNAKAN JALUR PROXY
+// Menggunakan domain yang sama agar cookie token terbawa otomatis
+const API_BASE_URL = '/api/proxy'; 
 
 export const userService = {
   
@@ -10,8 +11,9 @@ export const userService = {
       headers: { 
         'Content-Type': 'application/json',
       },
-      credentials: 'include', // WAJIB: Agar Cookie Token dikirim
-      cache: 'no-store'       // Agar data selalu fresh
+      // credentials: 'include' WAJIB agar Cookie Token user dikirim
+      credentials: 'include', 
+      cache: 'no-store'
     });
 
     if (!res.ok) {
@@ -30,7 +32,7 @@ export const userService = {
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify(data),
-      credentials: 'include' // WAJIB
+      credentials: 'include' 
     });
 
     if (!res.ok) {
@@ -48,7 +50,7 @@ export const userService = {
       headers: { 
         'Content-Type': 'application/json' 
       },
-      credentials: 'include', // WAJIB
+      credentials: 'include',
       cache: 'no-store'
     });
 
