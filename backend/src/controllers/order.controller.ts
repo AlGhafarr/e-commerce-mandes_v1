@@ -14,7 +14,7 @@ export const createOrder = async (req: Request, res: Response) => {
         // Ambil payload dari Frontend
         const { items, shippingCost, totalAmount, courier, addressId } = req.body; 
 
-        // FIX 1: Tambahkan include addresses pada query
+        // Tambahkan include addresses pada query
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { addresses: true }
@@ -50,7 +50,6 @@ export const createOrder = async (req: Request, res: Response) => {
                 totalAmount: finalTotal,
                 status: 'PENDING_PAYMENT',
                 
-                // Field yang sebelumnya error sekarang sudah aman:
                 snapToken: payment.token,
                 snapUrl: payment.redirect_url,
                 courier: courier || 'Kurir Toko',
@@ -61,11 +60,15 @@ export const createOrder = async (req: Request, res: Response) => {
 
                 items: {
                     create: items.map((item: any) => ({
+                        // ✅ Sudah aman dimasukkan ke schema
                         productId: item.productId,
                         productName: item.name || 'Produk',
                         quantity: item.quantity,
                         price: item.price,
-                        variantId: item.variantId || 'default', 
+                        
+                        // ✅ FIX: Jika variantId kosong atau 'default', ubah jadi null agar tidak memicu Foreign Key Error
+                        variantId: (item.variantId && item.variantId !== 'default') ? item.variantId : null, 
+                        
                         variantName: item.variant || 'Standard',
                         totalPrice: item.price * item.quantity
                     }))
@@ -93,7 +96,12 @@ export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
       include: { 
-        items: true,
+        // ✅ FIX: Include product untuk mengambil gambar asli produknya
+        items: {
+            include: {
+                product: true
+            }
+        },
         user: true 
       },
       orderBy: { createdAt: 'desc' }
@@ -117,17 +125,16 @@ export const getAllOrders = async (req: Request, res: Response) => {
             date: new Date(o.createdAt).toLocaleString('id-ID'),
             status: o.status,
             paymentMethod: o.paymentMethod || 'Midtrans', 
-            
-            // FIX: courier sekarang sudah dikenali
             courier: o.courier || 'Kurir Toko', 
-            
             trackingId: o.trackingId || '-',
             address: addressString, 
             items: o.items.map(i => ({
+                productId: i.productId, // Disertakan untuk link klik di dashboard
                 name: i.productName,
                 qty: i.quantity,
                 price: i.price,
-                image: 'https://placehold.co/50' 
+                // ✅ FIX: Gunakan gambar asli dari database, fallback ke placeholder jika tidak ada
+                image: i.product?.images?.[0] || 'https://placehold.co/50' 
             }))
         };
     });
@@ -147,7 +154,6 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status } = req.body; 
 
-    // FIX 3: Pastikan id adalah string, bukan array
     const orderId = Array.isArray(id) ? id[0] : id;
 
     let updateData: any = { status };

@@ -1,11 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MessageCircle, Trash2, Minus, Plus, Store, Truck, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trash2, Minus, Plus, Truck, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { userService } from '@/services/userService';
+
+// --- SETUP URL YANG BENAR ---
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.mandessnack.shop';
+const baseUrl = rawBaseUrl.replace(/\/$/, '');
+const API_URL = `${baseUrl}/api/cart`; // Hasil pasti: https://api.mandessnack.shop/api/cart
 
 // --- TIPE DATA ---
 interface CartItem {
@@ -14,8 +19,8 @@ interface CartItem {
   variantId?: string;
   storeName: string;
   name: string;
-  variant: string; // Misal: "Pedas - 100gr"
-  price: number;   // Harga sudah disesuaikan dengan varian dari Backend
+  variant: string; 
+  price: number;   
   image: string;
   quantity: number;
   selected: boolean;
@@ -30,7 +35,7 @@ export default function CartPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --- 1. FETCH DATA (STRICT API ONLY) ---
+  // --- 1. FETCH DATA KERANJANG ---
   useEffect(() => {
     const loadData = async () => {
       if (authLoading) return;
@@ -46,20 +51,17 @@ export default function CartPage() {
       
       try {
           if (activeTab === 'cart') {
-            const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
-            const res = await fetch(`${API_BASE}/cart`, { credentials: 'include' });
+            // ✅ MENGGUNAKAN API_URL YANG SUDAH DIPERBAIKI
+            const res = await fetch(API_URL, { credentials: 'include' });
             
             if (res.ok) {
               const data = await res.json();
               
-              // Load state checkbox
               const savedSelection = JSON.parse(sessionStorage.getItem('cart_selection') || '{}');
               
               const mappedData = data.map((item: any) => ({
                  ...item,
-                 // Pastikan harga aman
                  price: item.price || 0,
-                 // Default selected true
                  selected: savedSelection[item.id] !== undefined ? savedSelection[item.id] : true
               }));
               
@@ -79,15 +81,13 @@ export default function CartPage() {
     loadData();
   }, [activeTab, isAuthenticated, authLoading]);
 
-  // --- HANDLERS ---
+  // --- 2. UPDATE QUANTITY ---
   const updateQuantity = async (item: CartItem, newQty: number) => {
-     // Optimistic UI Update
      setCartItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: newQty } : i));
 
-     // Sync ke Database
      try {
-         const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
-         await fetch(`${API_BASE}/cart/sync`, {
+         // ✅ MENGGUNAKAN API_URL YANG SUDAH DIPERBAIKI
+         await fetch(`${API_URL}/sync`, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({ 
@@ -106,23 +106,27 @@ export default function CartPage() {
     updateQuantity(item, newQty);
   };
 
+  // --- 3. DELETE ITEM ---
   const handleDelete = async (id: string | number) => {
     if (!confirm('Hapus item ini?')) return;
     
-    // Simpan state lama
     const prevItems = [...cartItems];
     setCartItems(prev => prev.filter(i => i.id !== id));
     
     try {
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
-        const res = await fetch(`${API_BASE}/cart/${id}`, { method: 'DELETE', credentials: 'include' });
+        // ✅ MENGGUNAKAN API_URL YANG SUDAH DIPERBAIKI
+        const res = await fetch(`${API_URL}/${id}`, { 
+            method: 'DELETE', 
+            credentials: 'include' 
+        });
         if(!res.ok) throw new Error("Gagal hapus");
     } catch (e) {
         alert("Gagal menghapus item.");
-        setCartItems(prevItems); // Rollback
+        setCartItems(prevItems); 
     }
   };
 
+  // --- HANDLERS LAINNYA ---
   const toggleSelect = (id: string | number) => {
     setCartItems(prev => {
         const updated = prev.map(item => item.id === id ? { ...item, selected: !item.selected } : item);
@@ -150,14 +154,10 @@ export default function CartPage() {
         alert("Pilih minimal satu barang untuk dibeli.");
         return;
     }
-    // Simpan item terpilih agar checkout page tau
     localStorage.setItem('checkout_items', JSON.stringify(selectedItems));
-    
     router.push('/checkout');
   };
 
-  // --- PERHITUNGAN TOTAL HARGA ---
-  // Pastikan perhitungan menggunakan (price * quantity)
   const totalPrice = cartItems.reduce((total, item) => item.selected ? total + ((item.price || 0) * item.quantity) : total, 0);
   const totalSelectedItems = cartItems.filter(item => item.selected).length;
 
@@ -209,7 +209,6 @@ export default function CartPage() {
                       <div>
                         <h3 className="font-bold text-gray-800 line-clamp-1">{item.name}</h3>
                         
-                        {/* TAMPILKAN VARIAN JELAS (JIKA ADA) */}
                         {item.variant && item.variant !== 'Standard' && (
                             <p className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded w-fit mt-1">
                                 {item.variant}
@@ -238,31 +237,30 @@ export default function CartPage() {
           </>
         )}
 
-        {/* View Orders Tetap Sama */}
         {!loading && activeTab === 'orders' && (
-             <div className="space-y-4">
-             {orders.length === 0 ? (
-                 <div className="text-center py-10 text-gray-400"><p>Belum ada riwayat pesanan.</p></div>
-             ) : (
-                 orders.map((order: any) => (
-                   <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                     <div className="p-4 border-b border-gray-50 flex justify-between items-start">
-                       <div>
-                         <p className="text-xs text-gray-500 mb-1">{new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
-                         <p className="text-xs font-mono font-bold text-gray-800">#{order.id.slice(-8)}</p>
-                       </div>
-                       {getStatusBadge(order.status)}
-                     </div>
-                     <div className="p-4 flex justify-between items-center bg-white">
-                       <p className="text-sm font-bold text-[#F87B1B]">Total: Rp {order.totalAmount.toLocaleString()}</p>
-                       {order.status === 'PENDING_PAYMENT' && (
-                           <Link href={`/payment/${order.id}?token=${order.snapToken}`} className="px-4 py-2 bg-[#F87B1B] text-white text-xs font-bold rounded-lg">Bayar</Link>
-                       )}
-                     </div>
-                   </div>
-                 ))
-             )}
-           </div>
+              <div className="space-y-4">
+              {orders.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400"><p>Belum ada riwayat pesanan.</p></div>
+              ) : (
+                  orders.map((order: any) => (
+                    <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="p-4 border-b border-gray-50 flex justify-between items-start">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">{new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
+                          <p className="text-xs font-mono font-bold text-gray-800">#{order.id.slice(-8)}</p>
+                        </div>
+                        {getStatusBadge(order.status)}
+                      </div>
+                      <div className="p-4 flex justify-between items-center bg-white">
+                        <p className="text-sm font-bold text-[#F87B1B]">Total: Rp {order.totalAmount.toLocaleString()}</p>
+                        {order.status === 'PENDING_PAYMENT' && (
+                            <Link href={`/payment/${order.id}?token=${order.snapToken}`} className="px-4 py-2 bg-[#F87B1B] text-white text-xs font-bold rounded-lg">Bayar</Link>
+                        )}
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
         )}
       </main>
 

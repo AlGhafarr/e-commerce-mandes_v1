@@ -6,6 +6,11 @@ import { ArrowLeft, MapPin, Truck, Ticket, CreditCard, AlertCircle, CheckCircle,
 import { userService } from '@/services/userService'; 
 import { useAuth } from '@/app/context/AuthContext';
 
+// --- SETUP URL YANG BENAR ---
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.mandessnack.shop';
+const baseUrl = rawBaseUrl.replace(/\/$/, '');
+const API_URL = `${baseUrl}/api`; // Hasil pasti: https://api.mandessnack.shop/api
+
 const COURIERS = [
   { id: 'jne', name: 'JNE - Reguler', etd: '2-3 Hari', price: 18000 },
   { id: 'jnt', name: 'J&T - Express', etd: '1-2 Hari', price: 20000 },
@@ -83,7 +88,7 @@ function CheckoutContent() {
   // --- 1. FETCH CART (MODE BIASA) ---
   const fetchCartItems = useCallback(async () => {
     try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
+        // ✅ PERBAIKAN: Gunakan API_URL yang sudah kita setup di atas
         const res = await fetch(`${API_URL}/cart`, { credentials: 'include' });
         
         if (res.ok) {
@@ -92,6 +97,10 @@ function CheckoutContent() {
                 showToast("Keranjang kosong, kembali ke belanja...", "error");
                 setTimeout(() => router.push('/products'), 2000);
             } else {
+                // Di sini Anda bisa menambahkan logika untuk memfilter item 
+                // berdasarkan 'selectedItems' dari halaman keranjang (cart)
+                // misal: const selectedIds = JSON.parse(localStorage.getItem('checkout_items') || '[]').map((i:any) => i.id);
+                // const itemsToCheckout = data.filter((item:any) => selectedIds.includes(item.id));
                 setCheckoutItems(data);
             }
         } else {
@@ -110,20 +119,17 @@ function CheckoutContent() {
     if (!directProductId) return;
 
     try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
+        // ✅ PERBAIKAN: Gunakan API_URL yang sudah kita setup di atas
         const res = await fetch(`${API_URL}/products/${directProductId}`, { credentials: 'include' });
         
         if (res.ok) {
             const product = await res.json();
             
             // --- FIX START: LOGIKA PENENTUAN HARGA ---
-            // Kita harus mencari harga dari varian yang dipilih, bukan cuma product.price
             let finalPrice = product.price || product.basePrice || 0;
 
             if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-                // Cari varian yang cocok dengan string directVariant (misal: "Original - 140gr")
                 const matchedVariant = product.variants.find((v: any) => {
-                    // Logic pencocokan: Cek apakah nama varian + ukuran cocok
                     const variantNameFull = v.size ? `${v.name} - ${v.size}` : v.name;
                     return variantNameFull === directVariant || v.name === directVariant;
                 });
@@ -137,7 +143,7 @@ function CheckoutContent() {
             const directItem = [{
                 productId: product.id,
                 name: product.name,
-                price: finalPrice, // Gunakan harga yang sudah difilter
+                price: finalPrice, 
                 image: product.images?.[0] || null,
                 quantity: directQty,
                 variant: directVariant
@@ -211,7 +217,7 @@ function CheckoutContent() {
             orderType: mode === 'direct' ? 'direct' : 'cart' 
         };
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://10.253.128.163:4721/api';
+        // ✅ PERBAIKAN: Gunakan API_URL yang sudah kita setup di atas
         const res = await fetch(`${API_URL}/orders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

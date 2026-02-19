@@ -1,19 +1,25 @@
 import midtransClient from 'midtrans-client';
 
-const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
-
-// Inisialisasi Core Snap
-const snap = new midtransClient.Snap({
-    isProduction: isProduction,
-    serverKey: process.env.MIDTRANS_SERVER_KEY || '',
-    clientKey: process.env.MIDTRANS_CLIENT_KEY || ''
-});
-
 export const paymentService = {
     /**
      * Membuat Transaksi Midtrans (Dapat Token & Redirect URL)
      */
     async createTransaction(orderId: string, grossAmount: number, customerDetails: any) {
+        
+        // 1. CEK KEY (ALARM DEBUGGING)
+        const serverKey = process.env.MIDTRANS_SERVER_KEY;
+        if (!serverKey) {
+            console.error("🚨 FATAL ERROR: MIDTRANS_SERVER_KEY kosong atau tidak terbaca di .env!");
+            throw new Error("Sistem pembayaran belum dikonfigurasi dengan benar.");
+        }
+
+        // 2. INISIALISASI DI SINI (Agar aman dari urutan load dotenv)
+        const snap = new midtransClient.Snap({
+            isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
+            serverKey: serverKey,
+            clientKey: process.env.MIDTRANS_CLIENT_KEY || ''
+        });
+
         try {
             const parameter = {
                 transaction_details: {
@@ -33,28 +39,30 @@ export const paymentService = {
             // Request ke Midtrans
             const transaction = await snap.createTransaction(parameter);
             
-            // Return token & url untuk frontend
             return {
                 token: transaction.token,
                 redirect_url: transaction.redirect_url
             };
 
         } catch (error: any) {
-            console.error("Midtrans Error:", error.message);
+            // Log ini akan memberitahu Anda ALASAN PASTI dari Midtrans
+            console.error("🚨 Midtrans API Error Detail:", error.message);
             throw new Error("Gagal membuat transaksi pembayaran");
         }
     },
 
     /**
      * Fungsi Verifikasi Notifikasi (Webhook)
-     * Dipanggil saat Midtrans memberi kabar status bayar
      */
     async verifyNotification(notificationBody: any) {
+        const snap = new midtransClient.Snap({
+            isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
+            serverKey: process.env.MIDTRANS_SERVER_KEY || '',
+            clientKey: process.env.MIDTRANS_CLIENT_KEY || ''
+        });
+
         try {
-            // FIX: Tambahkan (snap as any) agar TypeScript tidak error
-            // Library midtrans-client TS definition-nya memang kurang lengkap di bagian ini
             const statusResponse = await (snap as any).transaction.notification(notificationBody);
-            
             return statusResponse;
         } catch (error: any) {
             console.error("Midtrans Notification Error:", error.message);
