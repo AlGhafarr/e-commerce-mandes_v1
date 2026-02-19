@@ -14,7 +14,7 @@ export default function ProductDetail() {
   const params = useParams();
   const productId = params.id as string; 
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -125,8 +125,13 @@ export default function ProductDetail() {
         triggerToast("Varian stok ini tidak tersedia.");
         return;
     }
+    
+    // 2. Cek Loading Session Auth
+    if (isLoading) {
+        return; 
+    }
 
-    // 2. Cek Login
+    // 3. Cek Login
     if (!isAuthenticated) {
         setIsMobileModalOpen(false);
         authEvents.triggerLoginModal(); 

@@ -10,31 +10,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'rahasia_user_biasa_123';
 const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET || 'rahasia_admin_ganteng';
 
 // --- CONFIG COOKIE (FINAL & STABLE) ---
-//const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-
-// GUNAKAN TITIK DI DEPAN DOMAIN (.mandessnack.shop)
-// Ini adalah kunci agar cookie bisa dibagi antara api.mandessnack.shop dan mandessnack.shop
-//const COOKIE_DOMAIN = IS_PRODUCTION ? '.mandessnack.shop' : undefined;
-
-//const getCookieOptions = (): CookieOptions => {
-//    return {
-//        httpOnly: true, // Wajib true (Security)
-//        secure: true,   // Wajib true (HTTPS Cloudflare)
-//        // 'none' + secure: true adalah setting paling stabil untuk Cross-Subdomain
-//        sameSite: 'lax', 
-
-//        maxAge: 7 * 24 * 3600 * 1000, 
-//        domain: COOKIE_DOMAIN 
-//    };
-//};
-
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.mandessnack.shop' : undefined);
 
 const getCookieOptions = (): CookieOptions => {
     return {
         httpOnly: true,
         secure: true,
-        sameSite: 'lax',         
+        sameSite: 'none',        
         maxAge: 7 * 24 * 3600 * 1000,
         domain: COOKIE_DOMAIN,
         path: '/'
@@ -124,7 +106,6 @@ export const loginWithPhone = async (req: Request, res: Response) => {
                 password: "",
                 otpCode: otp,
                 otpExpiry: expiry,
-                // Pastikan email optional di schema.prisma, atau pakai dummy ini:
                 email: `${dbPhone}@temp.mandessnack.shop` 
             }
         });
@@ -163,14 +144,14 @@ export const verifyOtp = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Kode OTP salah atau kadaluarsa" });
         }
 
-        // A. Jika Login (Sudah Verified & Ada Password) -> Berikan Token User
+        // A. Jika Login
         if (user.isVerified && user.password !== "") {
             await prisma.user.update({ where: { id: user.id }, data: { otpCode: null, otpExpiry: null } });
 
-            const token = jwt.sign({ id: user.id, role: user.role, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+            const mandes_token = jwt.sign({ id: user.id, role: user.role, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
 
-            // SIMPAN COOKIE USER (Nama: token)
-            res.cookie('token', token, getCookieOptions());
+            // ✅ BENAR: Set mandes_token
+            res.cookie('mandes_token', mandes_token, getCookieOptions());
             
             return res.json({ message: "Login Berhasil", user, action: "LOGIN_SUCCESS" });
         }
@@ -206,10 +187,10 @@ export const setPassword = async (req: Request, res: Response) => {
             }
         });
 
-        const token = jwt.sign({ id: user.id, role: user.role, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+        const mandes_token = jwt.sign({ id: user.id, role: user.role, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
 
-        // SIMPAN COOKIE USER (Nama: token)
-        res.cookie('token', token, getCookieOptions());
+        // ✅ BENAR: Set mandes_token
+        res.cookie('mandes_token', mandes_token, getCookieOptions());
 
         res.json({ message: "Registrasi Berhasil!", user });
     } catch (error) {
@@ -236,10 +217,10 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ error: "Username/Email atau Password salah" });
         }
 
-        const token = jwt.sign({ id: user.id, role: user.role, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+        const mandes_token = jwt.sign({ id: user.id, role: user.role, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
 
-        // SIMPAN COOKIE USER (Nama: token)
-        res.cookie('token', token, getCookieOptions());
+        // ✅ BENAR: Set mandes_token
+        res.cookie('mandes_token', mandes_token, getCookieOptions());
 
         res.json({ message: "Login Berhasil", user: { id: user.id, name: user.name, role: user.role } });
     } catch (error) {
@@ -253,8 +234,9 @@ export const login = async (req: Request, res: Response) => {
 // ==========================================
 export const getMe = async (req: Request, res: Response) => {
     try {
-        // Ambil token dari cookie 'token'
-        const token = req.cookies.token;
+        // ✅ PERBAIKAN DISINI: Harus baca dari req.cookies.mandes_token
+        const token = req.cookies.mandes_token; 
+        
         if (!token) return res.status(401).json({ error: "Unauthorized" });
 
         const decoded: any = jwt.verify(token, JWT_SECRET);
@@ -275,8 +257,8 @@ export const getMe = async (req: Request, res: Response) => {
 // ==========================================
 export const logout = (req: Request, res: Response) => {
     const { maxAge, ...logoutOptions } = getCookieOptions();
-    // Hapus cookie 'token'
-    res.clearCookie('token', logoutOptions);
+    // ✅ BENAR: Hapus mandes_token
+    res.clearCookie('mandes_token', logoutOptions);
     res.json({ message: "Logout berhasil" });
 };
 
@@ -287,9 +269,7 @@ export const adminLogin = async (req: Request, res: Response) => {
     try {
         const { username, password } = req.body;
 
-        // Cek Env
         if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
-            // Delay dikit biar ga kena brute force
             await new Promise(resolve => setTimeout(resolve, 1000));
             return res.status(401).json({ error: "Kredensial Admin Salah!" });
         }
@@ -300,7 +280,6 @@ export const adminLogin = async (req: Request, res: Response) => {
             { expiresIn: '6h' }
         );
 
-        // SIMPAN COOKIE ADMIN (Nama: mandes_admin_token)
         res.cookie('mandes_admin_token', token, getCookieOptions());
 
         res.json({ message: "Welcome Commander!", role: 'super_admin' });
@@ -316,7 +295,6 @@ export const adminLogin = async (req: Request, res: Response) => {
 // ==========================================
 export const getAdminMe = async (req: Request, res: Response) => {
     try {
-        // Ambil token dari cookie 'mandes_admin_token'
         const token = req.cookies.mandes_admin_token;
         if (!token) return res.status(401).json({ error: "Unauthorized" });
 
@@ -334,7 +312,6 @@ export const getAdminMe = async (req: Request, res: Response) => {
 // ==========================================
 export const adminLogout = (req: Request, res: Response) => {
     const { maxAge, ...logoutOptions } = getCookieOptions();
-    // Hapus cookie 'mandes_admin_token'
     res.clearCookie('mandes_admin_token', logoutOptions);
     res.json({ message: "Admin Logout berhasil" });
 };

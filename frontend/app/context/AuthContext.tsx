@@ -4,8 +4,13 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter, usePathname } from 'next/navigation';
 
 // Konfigurasi URL Backend (env-first, fallback ke localhost untuk dev)
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-const API_URL = `${baseUrl}/api/auth`;
+const domainApi = process.env.NEXT_PUBLIC_API_URL || 'https://api.mandessnack.shop';
+
+const cleanBaseUrl = domainApi.endsWith('/api') 
+  ? domainApi.slice(0, -4) 
+  : domainApi;
+
+const API_URL = `${cleanBaseUrl}/api/auth`;
 
 // --- TIPE DATA ---
 interface User {
@@ -133,7 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!res.ok) throw new Error(result.error || 'OTP Invalid');
       
       return result;
-    } catch (error) {
+    } catch (error) { 
       throw error;
     }
   };

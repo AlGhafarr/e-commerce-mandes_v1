@@ -2,7 +2,7 @@
 
 // ✅ GUNAKAN JALUR PROXY 
 // Agar request ke Keranjang dianggap satu domain dengan Frontend
-const API_URL = '/api/proxy'; 
+const API_URL = 'https://api.mandessnack.shop/api'; 
 
 export const cartService = {
   /**
