@@ -20,7 +20,7 @@ export default function PaymentPage() {
       setTransaction(JSON.parse(data));
     } else {
       // Jika tidak ada data transaksi, kembalik ke home
-      router.push('/');
+      router.push('/');67 
     }
   }, [router]);
 
