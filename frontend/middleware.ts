@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
 
   // 1. READ TOKENS
   const adminToken = request.cookies.get('mandes_admin_token')?.value;
-  const userToken = request.cookies.get('token')?.value;
+  const userToken = request.cookies.get('mandes_token')?.value;
 
   // Logging untuk Debugging (Hanya muncul di log Docker Frontend)
   if (pathname.startsWith('/admin') || pathname.startsWith('/cart') || pathname.startsWith('/checkout')) {

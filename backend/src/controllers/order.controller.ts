@@ -6,6 +6,9 @@ import { generateOrderID } from '../utils/token.generator';
 // ==========================================
 // 1. CREATE ORDER (User Checkout)
 // ==========================================
+// ==========================================
+// 1. CREATE ORDER (User Checkout)
+// ==========================================
 export const createOrder = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
@@ -60,13 +63,11 @@ export const createOrder = async (req: Request, res: Response) => {
 
                 items: {
                     create: items.map((item: any) => ({
-                        // ✅ Sudah aman dimasukkan ke schema
                         productId: item.productId,
                         productName: item.name || 'Produk',
                         quantity: item.quantity,
                         price: item.price,
                         
-                        // ✅ FIX: Jika variantId kosong atau 'default', ubah jadi null agar tidak memicu Foreign Key Error
                         variantId: (item.variantId && item.variantId !== 'default') ? item.variantId : null, 
                         
                         variantName: item.variant || 'Standard',
@@ -75,6 +76,19 @@ export const createOrder = async (req: Request, res: Response) => {
                 }
             }
         });
+
+        // ==============================================================
+        // ✅ FIX: HAPUS BARANG DARI KERANJANG SETELAH CHECKOUT
+        // ==============================================================
+        const productIds = items.map((item: any) => item.productId);
+        
+        await prisma.cartItem.deleteMany({
+            where: {
+                cart: { userId: user.id },      // Pastikan hanya menghapus keranjang milik user ini
+                productId: { in: productIds }   // Hanya hapus produk yang barusan di-checkout
+            }
+        });
+        // ==============================================================
 
         res.json({ 
             message: "Order berhasil dibuat", 
@@ -88,6 +102,7 @@ export const createOrder = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message || "Gagal membuat order" });
     }
 };
+
 
 // ==========================================
 // 2. GET ALL ORDERS (Admin Dashboard)

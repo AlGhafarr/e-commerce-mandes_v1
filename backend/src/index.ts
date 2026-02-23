@@ -14,6 +14,7 @@ import cartRoutes from './routes/cart.route';
 import orderRoutes from './routes/order.route';
 import adminRoutes from './routes/admin.route';
 import chatRoutes from './routes/chat.route';
+import paymentRoutes from './routes/payment.route';
 
 // Import Middlewares
 import { apiLimiter } from './middleware/rateLimit.middleware';
@@ -125,6 +126,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);     // Login Admin ada disini
 app.use('/api/products', productRoutes); // Katalog Produk
 app.use('/api/chat', chatRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // ------------------------------------------
 // B. AUTHENTICATION GATE (User Biasa)

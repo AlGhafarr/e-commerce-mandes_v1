@@ -108,7 +108,8 @@ export const removeCartItem = async (req: Request, res: Response) => {
 
     try {
         const { itemId } = req.params;
-        await prisma.cartItem.delete({ where: { id: itemId } });
+        const validItemId = Array.isArray(itemId) ? itemId[0] : itemId;
+        await prisma.cartItem.delete({ where: { id: validItemId as string } });
         res.json({ message: "Item dihapus" });
     } catch (error) {
         res.status(500).json({ error: "Gagal hapus item" });

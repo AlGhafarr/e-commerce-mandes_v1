@@ -149,6 +149,7 @@ model Order {
   // 3. Integrasi Biteship (Output Sistem)
   trackingId      String?   @unique // ID Order Internal Biteship (untuk Webhook matching)
   resiNumber      String?   // Nomor Resi Asli (AWB) untuk dilihat User (JNE12345)
+  trackingHistory Json?
   
   // 4. Integrasi Payment (Midtrans)
   snapToken       String?   @unique 
